@@ -165,10 +165,11 @@ class GoogleOAuth(BaseGoogleOAuth):
         registered and a security badge is displayed on authorization page.
         http://code.google.com/apis/accounts/docs/OAuth_ref.html#SigningOAuth
         """
-        try:
-            return super(GoogleOAuth, cls).get_key_and_secret()
-        except AttributeError:
-            return 'anonymous', 'anonymous'
+        key, secret = super(GoogleOAuth, cls).get_key_and_secret()
+        if not key and not secret:
+            key = 'anonymous'
+            secret = 'anonymous'
+        return key, secret
 
     @classmethod
     def enabled(cls):
