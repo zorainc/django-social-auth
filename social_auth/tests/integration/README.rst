@@ -23,6 +23,15 @@ the needed credentials to run the tests in the diferent providers.
   $ casper <file>.js
   
 
+Pending Tests
+-------------
+
+- Facebook Canvas APP
+- Pipeline process
+- Canceling the auth process
+- Failures
+- Run withing django tests suite
+
 .. _PhantomJS: http://phantomjs.org/
 .. _CasperJS: http://casperjs.org/
 .. _django-social-auth: https://github.com/omab/django-social-auth/tree/master/example
