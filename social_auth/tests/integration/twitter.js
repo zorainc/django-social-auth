@@ -1,9 +1,8 @@
-var casper = require('casper').create({
-    verbose: false,
-    logLevel: 'debug'
-});
-var settings = require('./settings.js').settings;
-var domain = settings.facebook.domain;
+var settings = require('./settings.js').settings,
+    provider = settings.twitter,
+    domain = provider.domain || settings.domain,
+    casper = require('casper').create(settings.casper);
+
 
 casper.start(domain + '/', function () {
     this.click('a#twitter');
@@ -11,8 +10,8 @@ casper.start(domain + '/', function () {
 
 casper.then(function () {
     this.fill('form#oauth_form', {
-        'session[username_or_email]': settings.facebook.username,
-        'session[password]': settings.facebook.password
+        'session[username_or_email]': provider.username,
+        'session[password]': provider.password
     }, true);
 });
 

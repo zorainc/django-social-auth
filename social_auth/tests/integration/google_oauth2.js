@@ -1,9 +1,7 @@
-var casper = require('casper').create({
-    verbose: false,
-    logLevel: 'debug'
-});
-var settings = require('./settings.js').settings['google-oauth2'];
-var domain = settings.domain;
+var settings = require('./settings.js').settings,
+    provider = settings['google-oauth2'],
+    domain = provider.domain || settings.domain,
+    casper = require('casper').create(settings.casper);
 
 casper.start(domain + '/', function () {
     this.click('a#google-oauth2');
@@ -11,8 +9,8 @@ casper.start(domain + '/', function () {
 
 casper.then(function () {
     this.fill('form#gaia_loginform', {
-        'Email': settings.username,
-        'Passwd': settings.password
+        'Email': provider.username,
+        'Passwd': provider.password
     }, true);
 });
 

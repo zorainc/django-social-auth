@@ -54,7 +54,7 @@
   {% for name in social_auth.backends.openid %}
     <li>
     {% if name != "livejournal" and name != "openid" %}
-      <a rel="nofollow" href="{% url "socialauth_begin" name %}">{{ name|title }}</a>
+      <a rel="nofollow" id="{{ name }}" href="{% url "socialauth_begin" name %}">{{ name|title }}</a>
     {% else %}
       {% if name == "livejournal" %}
       <form action="{% url "socialauth_begin" "livejournal" %}" method="post">{% csrf_token %}

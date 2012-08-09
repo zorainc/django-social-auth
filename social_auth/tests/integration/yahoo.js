@@ -1,24 +1,23 @@
 var settings = require('./settings.js').settings,
-    provider = settings.facebook,
+    provider = settings.yahoo,
     domain = provider.domain || settings.domain,
     casper = require('casper').create(settings.casper);
 
-
 casper.start(domain + '/', function () {
-    this.click('a#facebook');
+    this.click('a#yahoo');
 });
 
 casper.then(function () {
-    this.fill('form#login_form', {
-        'email': provider.username,
-        'pass': provider.password
+    this.fill('form[name="login_form"]', {
+        'login': provider.username,
+        'passwd': provider.password
     }, true);
 });
 
 casper.then(function () {
     if (this.getCurrentUrl() !== domain + '/done/') {
         // app not authorized yet
-        this.click('[name="grant_clicked"]');
+        this.click('[name="agree"]');
     }
 });
 

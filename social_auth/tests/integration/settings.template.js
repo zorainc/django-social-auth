@@ -1,6 +1,12 @@
 exports.settings = {
+    'casper': {
+        'verbose': false,
+        'logLevel': 'debug'
+    },
+
+    'domain': 'http://localhost:8000',
+
     'google-oauth2': {
-        'domain': 'http://localhost:8000',
         'username': '',
         'password': ''
     },
@@ -12,7 +18,11 @@ exports.settings = {
     },
 
     'twitter': {
-        'domain': 'http://localhost:8000',
+        'username': '',
+        'password': ''
+    },
+
+    'yahoo': {
         'username': '',
         'password': ''
     }
