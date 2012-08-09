@@ -9,7 +9,7 @@ if (provider.username && provider.password) {
     casper = require('casper').create(settings.casper);
 
     casper.start(domain + '/', function () {
-        this.click('a#facebook');
+        this.click(provider.linkSelector);
     });
 
     casper.then(function () {
