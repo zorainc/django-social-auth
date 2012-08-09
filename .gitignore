@@ -19,3 +19,4 @@ Vagrantfile
 .*project
 .settings
 .coverage
+social_auth/tests/integration/settings.js

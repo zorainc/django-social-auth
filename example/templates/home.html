@@ -13,7 +13,7 @@
   <h3>Login using <a href="http://oauth.net/" title="OAuth">OAuth</a> from:</h3>
   <ul>
   {% for name in social_auth.backends.oauth %}
-    <li><a rel="nofollow" href="{% url "socialauth_begin" name %}">{{ name|title }}</a></li>
+    <li><a rel="nofollow" id="{{ name }}" href="{% url "socialauth_begin" name %}">{{ name|title }}</a></li>
   {% endfor %}
   </ul>
 </div>
@@ -22,7 +22,7 @@
   <h3>Login using <a href="http://tools.ietf.org/html/draft-ietf-oauth-v2-10" title="OAuth2">OAuth2</a> from:</h3>
   <ul>
   {% for name in social_auth.backends.oauth2 %}
-    <li><a rel="nofollow" href="{% url "socialauth_begin" name %}">{{ name|title }}</a></li>
+    <li><a rel="nofollow" id="{{ name }}" href="{% url "socialauth_begin" name %}">{{ name|title }}</a></li>
   {% endfor %}
   </ul>
 </div>
@@ -33,7 +33,7 @@
   {% for name in social_auth.backends.openid %}
     <li>
     {% if name != "livejournal" and name != "openid" %}
-      <a rel="nofollow" href="{% url "socialauth_begin" name %}">{{ name|title }}</a>
+      <a rel="nofollow" id="{{ name }}" href="{% url "socialauth_begin" name %}">{{ name|title }}</a>
     {% else %}
       {% if name == "livejournal" %}
       <form action="{% url "socialauth_begin" "livejournal" %}" method="post">{% csrf_token %}
@@ -91,10 +91,10 @@
 
 <div>
   <h3>Login using other authentication systems:</h3>
-  	<ul>
-        <li><a rel="nofollow" href="{% url "fb_app" %}">Facebook Canvas Application</a></li>
-  		<li><a rel="nofollow" href="{% url "socialauth_begin" "vkontakte" %}">VKontakte OpenAPI</a></li>
-  		<li><a rel="nofollow" href="{% url "ok_app_info" %}">Odnoklassniki IFRAME application</a></li>
-	</ul>
+  <ul>
+    <li><a rel="nofollow" href="{% url "fb_app" %}">Facebook Canvas Application</a></li>
+    <li><a rel="nofollow" href="{% url "socialauth_begin" "vkontakte" %}">VKontakte OpenAPI</a></li>
+    <li><a rel="nofollow" href="{% url "ok_app_info" %}">Odnoklassniki IFRAME application</a></li>
+  </ul>
 </div>
 {% endblock %}
