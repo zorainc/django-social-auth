@@ -11,15 +11,13 @@ Then update your settings values using registration information
 ref:
 https://github.com/gkmngrgn/django-tumblr-auth
 """
-from urllib import urlopen
-
 from oauth2 import Request as OAuthRequest, Token as OAuthToken, \
                    SignatureMethod_HMAC_SHA1
 
 from django.utils import simplejson
 
-from social_auth.backends import ConsumerBasedOAuth
-from social_auth.backends import OAuthBackend
+from social_auth.utils import dsa_urlopen
+from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 
 
 TUMBLR_SERVER = 'www.tumblr.com'
@@ -106,7 +104,7 @@ class TumblrAuth(ConsumerBasedOAuth):
 
     def fetch_response(self, request):
         """Executes request and fetchs service response"""
-        response = urlopen(request.to_url())
+        response = dsa_urlopen(request.to_url())
         return response.read()
 
 
