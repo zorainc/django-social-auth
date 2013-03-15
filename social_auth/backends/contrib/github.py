@@ -14,10 +14,8 @@ setting, it must be a list of values to request.
 By default account id and token expiration time are stored in extra_data
 field, check OAuthBackend class for details on how to extend it.
 """
-from urllib import urlencode
-from urllib2 import HTTPError
+from requests import HTTPError
 
-from django.utils import simplejson
 from django.conf import settings
 
 from social_auth.utils import dsa_urlopen
@@ -67,12 +65,10 @@ class GithubAuth(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
-        url = GITHUB_USER_DATA_URL + '?' + urlencode({
-            'access_token': access_token
-        })
-
         try:
-            data = simplejson.load(dsa_urlopen(url))
+            data = dsa_urlopen(GITHUB_USER_DATA_URL, params={
+                'access_token': access_token
+            }).json()
         except ValueError:
             data = None
 
@@ -90,11 +86,9 @@ class GithubAuth(BaseOAuth2):
                 data = None
             else:
                 # if the user is a member of the organization, response code
-                # will be 204, see:
-                #   http://developer.github.com/v3/orgs/members/#response-if-requester-is-an-organization-member-and-user-is-a-member
-                if not response.code == 204:
+                # will be 204, see http://bit.ly/ZS6vFl
+                if not response.status_code == 204:
                     data = None
-
         return data
 
 # Backend definition

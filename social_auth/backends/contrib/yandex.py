@@ -6,15 +6,10 @@ openid.yandex.ru/user. Username is retrieved from the identity url.
 
 If username is not specified, OpenID 2.0 url used for authentication.
 """
-from django.utils import simplejson
-
-from urllib import urlencode
-from urlparse import urlparse, urlsplit
-
+from social_auth.p3 import urlparse, urlsplit
+from social_auth.utils import setting, log, dsa_urlopen
 from social_auth.backends import OpenIDBackend, OpenIdAuth, OAuthBackend, \
                                  BaseOAuth2
-
-from social_auth.utils import setting, log, dsa_urlopen
 
 # Yandex configuration
 YANDEX_AUTHORIZATION_URL = 'https://oauth.yandex.ru/authorize'
@@ -101,17 +96,19 @@ class YaruAuth(BaseOAuth2):
 
     def user_data(self, access_token, response, *args, **kwargs):
         """Loads user data from service"""
-        params = {'oauth_token': access_token,
-                  'format': 'json',
-                  'text': 1,
-                  }
-
-        url = self.get_api_url() + '?' + urlencode(params)
         try:
-            return simplejson.load(dsa_urlopen(url))
+            return dsa_urlopen(self.get_api_url(), params={
+                'oauth_token': access_token,
+                'format': 'json',
+                'text': 1,
+            }).json()
         except (ValueError, IndexError):
             log('error', 'Could not load data from Yandex.',
-                exc_info=True, extra=dict(data=params))
+                exc_info=True, extra=dict(data={
+                    'oauth_token': access_token,
+                    'format': 'json',
+                    'text': 1,
+                }))
             return None
 
 

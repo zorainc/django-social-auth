@@ -5,8 +5,6 @@ Notes:
       on third party providers that (if using POST) won't be sending csrf
       token back.
 """
-from urllib2 import quote
-
 from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth import login, REDIRECT_FIELD_NAME
 from django.contrib.auth.decorators import login_required
@@ -14,6 +12,7 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.db import IntegrityError
 
+from social_auth.p3 import quote
 from social_auth.utils import sanitize_redirect, setting, \
                               backend_setting, clean_partial_pipeline
 from social_auth.decorators import dsa_view, disconnect_view

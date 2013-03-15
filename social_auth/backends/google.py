@@ -13,13 +13,6 @@ APIs console https://code.google.com/apis/console/ Identity option.
 
 OpenID also works straightforward, it doesn't need further configurations.
 """
-from urllib import urlencode
-from urllib2 import Request
-
-from oauth2 import Request as OAuthRequest
-
-from django.utils import simplejson
-
 from social_auth.utils import setting, dsa_urlopen
 from social_auth.backends import OpenIdAuth, ConsumerBasedOAuth, BaseOAuth2, \
                                  OAuthBackend, OpenIDBackend
@@ -143,9 +136,7 @@ class GoogleOAuth(BaseGoogleOAuth):
 
     def oauth_authorization_request(self, token):
         """Generate OAuth request to authorize token."""
-        return OAuthRequest.from_consumer_and_token(self.consumer,
-                    token=token,
-                    http_url=self.AUTHORIZATION_URL)
+        return self.oauth_request(token, self.AUTHORIZATION_URL)
 
     def oauth_request(self, token, url, extra_params=None):
         extra_params = extra_params or {}
@@ -211,9 +202,9 @@ def googleapis_email(url, params):
     http://groups.google.com/group/oauth/browse_thread/thread/d15add9beb418ebc
     and: http://code.google.com/apis/accounts/docs/OAuth2.html#CallingAnAPI
     """
-    request = Request(url + '?' + params, headers={'Authorization': params})
     try:
-        return simplejson.loads(dsa_urlopen(request).read())['data']
+        return dsa_urlopen(url, params=params,
+                           headers={'Authorization': params}).json()['data']
     except (ValueError, KeyError, IOError):
         return None
 
@@ -225,9 +216,8 @@ def googleapis_profile(url, access_token):
     https://developers.google.com/accounts/docs/OAuth2Login
     """
     data = {'access_token': access_token, 'alt': 'json'}
-    request = Request(url + '?' + urlencode(data))
     try:
-        return simplejson.loads(dsa_urlopen(request).read())
+        return dsa_urlopen(url, params=data).json()
     except (ValueError, KeyError, IOError):
         return None
 

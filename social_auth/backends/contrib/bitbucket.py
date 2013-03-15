@@ -10,9 +10,8 @@ By default username, email, token expiration time, first name and last name are
 stored in extra_data field, check OAuthBackend class for details on how to
 extend it.
 """
-from django.utils import simplejson
-from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.utils import dsa_urlopen
+from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 
 # Bitbucket configuration
 BITBUCKET_SERVER = 'bitbucket.org/api/1.0'
@@ -80,11 +79,10 @@ class BitbucketAuth(ConsumerBasedOAuth):
         # authenticated query: First obtain the user's email via an
         # authenticated GET
         url = BITBUCKET_EMAIL_DATA_URL
-        request = self.oauth_request(access_token, url)
-        response = self.fetch_response(request)
+        response = self.oauth_request(access_token, url)
         try:
             # Then retrieve the user's primary email address or the top email
-            email_addresses = simplejson.loads(response)
+            email_addresses = response.json()
             for email_address in reversed(email_addresses):
                 if email_address['active']:
                     email = email_address['email']
@@ -92,13 +90,12 @@ class BitbucketAuth(ConsumerBasedOAuth):
                         break
             # Then return the user data using a normal GET with the
             # BITBUCKET_USER_DATA_URL and the user's email
-            response = dsa_urlopen(BITBUCKET_USER_DATA_URL + email)
-            user_details = simplejson.load(response)['user']
+            response = dsa_urlopen(BITBUCKET_USER_DATA_URL + email).json()
+            user_details = response['user']
             user_details['email'] = email
             return user_details
         except ValueError:
-            return None
-        return None
+            pass
 
 
 # Backend definition

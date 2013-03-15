@@ -11,15 +11,15 @@ Then update your settings values using registration information
 """
 
 from django.conf import settings
-from django.utils import simplejson
 
-from urllib import urlencode, unquote
-from urllib2 import Request, HTTPError
 from hashlib import md5
+from requests import HTTPError
 
+from social_auth.p3 import unquote
 from social_auth.backends import OAuthBackend, BaseOAuth2
 from social_auth.exceptions import AuthCanceled
 from social_auth.utils import setting, log, dsa_urlopen
+
 
 MAILRU_API_URL = 'http://www.appsmail.ru/platform/api'
 MAILRU_OAUTH2_SCOPE = ['']
@@ -86,14 +86,11 @@ def mailru_api(data):
     """
     data.update({'app_id': settings.MAILRU_OAUTH2_CLIENT_KEY, 'secure': '1'})
     data['sig'] = mailru_sig(data)
-
-    params = urlencode(data)
-    request = Request(MAILRU_API_URL, params)
     try:
-        return simplejson.loads(dsa_urlopen(request).read())
+        return dsa_urlopen(MAILRU_API_URL, data=data, method='POST').json()
     except (TypeError, KeyError, IOError, ValueError, IndexError):
-        log('error', 'Could not load data from Mail.ru.',
-            exc_info=True, extra=dict(data=params))
+        log('error', 'Could not load data from Mail.ru.', exc_info=True,
+            extra=data)
         return None
 
 

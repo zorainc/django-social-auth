@@ -1,8 +1,5 @@
-from urllib import urlencode
-from django.utils import simplejson
-
-from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.utils import dsa_urlopen
+from social_auth.backends import BaseOAuth2, OAuthBackend
 
 STOCKTWITS_SERVER = 'api.stocktwits.com'
 STOCKTWITS_AUTHORIZATION_URL = 'https://%s/api/2/oauth/authorize' % \
@@ -23,7 +20,7 @@ class StocktwitsBackend(OAuthBackend):
         """Return user details from Stocktwits account"""
         try:
             first_name, last_name = response['user']['name'].split(' ', 1)
-        except:
+        except Exception:
             first_name = response['user']['name']
             last_name = ''
         return {'username': response['user']['username'],
@@ -47,10 +44,10 @@ class StocktwitsAuth(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
-        params = {'access_token': access_token}
-        url = STOCKTWITS_CHECK_AUTH + '?' + urlencode(params)
         try:
-            return simplejson.load(dsa_urlopen(url))
+            return dsa_urlopen(STOCKTWITS_CHECK_AUTH, params={
+                'access_token': access_token
+            }).json()
         except ValueError:
             return None
 

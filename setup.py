@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 """Setup file for easy installation"""
+import sys
 from os.path import join, dirname
 from setuptools import setup
 
+
+PY3 = sys.version_info[0] == 3
 
 version = __import__('social_auth').__version__
 
@@ -45,15 +48,21 @@ setup(name='django-social-auth',
       package_data={'social_auth': ['locale/*/LC_MESSAGES/*']},
       long_description=long_description(),
       install_requires=['django>=1.2.5',
-                        'oauth2>=1.5.167',
-                        'python_openid>=2.2'],
+                        PY3 and 'python3-openid>=3.0.1' or
+                                'python_openid>=2.2',
+                        'oauthlib>=0.3.8',
+                        'requests>=1.1.0',
+                        'requests-oauthlib>=0.3.0',
+                        'six>=1.2.0'],
       classifiers=['Framework :: Django',
                    'Development Status :: 4 - Beta',
                    'Topic :: Internet',
                    'License :: OSI Approved :: BSD License',
                    'Intended Audience :: Developers',
                    'Environment :: Web Environment',
+                   'Programming Language :: Python',
                    'Programming Language :: Python :: 2.5',
                    'Programming Language :: Python :: 2.6',
-                   'Programming Language :: Python :: 2.7'],
+                   'Programming Language :: Python :: 2.7',
+                   'Programming Language :: Python :: 3'],
       zip_safe=False)

@@ -13,16 +13,14 @@ to request.
 By default account id and token expiration time are stored in extra_data
 field, check OAuthBackend class for details on how to extend it.
 """
-from urllib import urlencode
-from urllib2 import Request, HTTPError
-from urlparse import parse_qsl
 from gzip import GzipFile
-from StringIO import StringIO
+from requests import HTTPError
 
 from django.utils import simplejson
 from django.conf import settings
 
-from social_auth.utils import dsa_urlopen
+from social_auth.p3 import StringIO
+from social_auth.utils import dsa_urlopen, parse_qs
 from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.exceptions import AuthUnknownError, AuthCanceled
 
@@ -66,13 +64,13 @@ class StackoverflowAuth(BaseOAuth2):
         """Completes loging process, must return user instance"""
         self.process_error(self.data)
         params = self.auth_complete_params(self.validate_state())
-        request = Request(self.ACCESS_TOKEN_URL, data=urlencode(params),
-                          headers=self.auth_headers())
-
         try:
-            response = dict(parse_qsl(dsa_urlopen(request).read()))
-        except HTTPError, e:
-            if e.code == 400:
+            response = dsa_urlopen(self.ACCESS_TOKEN_URL, data=params,
+                                   headers=self.auth_headers(),
+                                   method='POST')
+            response = parse_qs(response.content)
+        except HTTPError as e:
+            if e.response.status_code == 400:
                 raise AuthCanceled(self)
             else:
                 raise
@@ -85,18 +83,17 @@ class StackoverflowAuth(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
-        url = STACKOVERFLOW_USER_DATA_URL + '?' + urlencode({
+        opener = dsa_urlopen(STACKOVERFLOW_USER_DATA_URL, params={
             'site': 'stackoverflow',
             'access_token': access_token,
-            'key': getattr(settings, 'STACKOVERFLOW_KEY')})
-
-        opener = dsa_urlopen(url)
+            'key': getattr(settings, 'STACKOVERFLOW_KEY')
+        })
         if opener.headers.get('content-encoding') == 'gzip':
-            ''' stackoverflow doesn't respect no gzip header '''
-            gzip = GzipFile(fileobj=StringIO(opener.read()), mode='r')
+            # stackoverflow doesn't respect no gzip header
+            gzip = GzipFile(fileobj=StringIO(opener.content), mode='r')
             response = gzip.read()
         else:
-            response = opener.read()
+            response = opener.content
 
         try:
             data = simplejson.loads(response)

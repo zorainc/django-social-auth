@@ -9,10 +9,6 @@ values.
 By default account id is stored in extra_data field, check OAuthBackend
 class for details on how to extend it.
 """
-from urllib2 import Request
-
-from django.utils import simplejson
-
 from social_auth.utils import dsa_urlopen
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend, BaseOAuth2
 from social_auth.exceptions import AuthCanceled
@@ -53,12 +49,11 @@ class DoubanAuth(ConsumerBasedOAuth):
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
-        url = 'http://api.douban.com/people/%40me?&alt=json'
-        request = self.oauth_request(access_token, url)
-        json = self.fetch_response(request)
-
         try:
-            return simplejson.loads(json)
+            return self.oauth_request(
+                access_token,
+                'http://api.douban.com/people/%40me?&alt=json'
+            ).json()
         except ValueError:
             return None
 
@@ -99,11 +94,11 @@ class DoubanAuth2(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
-        url = 'https://api.douban.com/v2/user/~me'
-        headers = {'Authorization': 'Bearer %s' % access_token}
-        request = Request(url, headers=headers)
         try:
-            return simplejson.loads(dsa_urlopen(request).read())
+            return dsa_urlopen(
+                'https://api.douban.com/v2/user/~me',
+                headers={'Authorization': 'Bearer %s' % access_token}
+            ).json()
         except (ValueError, KeyError, IOError):
             return None
 

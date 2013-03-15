@@ -1,19 +1,20 @@
 import time
 import random
 import hashlib
-import urlparse
-import urllib
 import logging
-from urllib2 import urlopen
-from cgi import parse_qsl
+import six
 
 from collections import defaultdict
 from datetime import timedelta, tzinfo
+from requests import request
 
 from django.conf import settings
 from django.db.models import Model
 from django.contrib.contenttypes.models import ContentType
 from django.utils.functional import SimpleLazyObject
+
+from social_auth.p3 import urlparse, urlunparse, urlencode, \
+                           parse_qs as battery_parse_qs
 
 
 try:
@@ -127,7 +128,7 @@ def sanitize_redirect(host, redirect_to):
 
     # Heavier security check, don't allow redirection to a different host.
     try:
-        netloc = urlparse.urlparse(redirect_to)[1]
+        netloc = urlparse(redirect_to)[1]
     except TypeError:  # not valid redirect_to value
         return None
 
@@ -225,10 +226,11 @@ def clean_partial_pipeline(request):
 def url_add_parameters(url, params):
     """Adds parameters to URL, parameter will be repeated if already present"""
     if params:
-        fragments = list(urlparse.urlparse(url))
-        fragments[4] = urllib.urlencode(parse_qsl(fragments[4]) +
-                                        params.items())
-        url = urlparse.urlunparse(fragments)
+        fragments = list(urlparse(url))
+        values = parse_qs(fragments[4])
+        values.update(params)
+        fragments[4] = urlencode(values)
+        url = urlunparse(fragments)
     return url
 
 
@@ -245,14 +247,14 @@ class LazyDict(SimpleLazyObject):
         self._wrapped[name] = value
 
 
-def dsa_urlopen(*args, **kwargs):
+def dsa_urlopen(url, method='GET', *args, **kwargs):
     """Like urllib2.urlopen but sets a timeout defined by
     SOCIAL_AUTH_URLOPEN_TIMEOUT setting if defined (and not already in
     kwargs)."""
-    timeout = setting('SOCIAL_AUTH_URLOPEN_TIMEOUT')
-    if timeout and 'timeout' not in kwargs:
-        kwargs['timeout'] = timeout
-    return urlopen(*args, **kwargs)
+    kwargs.setdefault('timeout', setting('SOCIAL_AUTH_URLOPEN_TIMEOUT'))
+    response = request(method, url, *args, **kwargs)
+    response.raise_for_status()
+    return response
 
 
 def get_backend_name(backend):
@@ -280,6 +282,23 @@ def custom_user_frozen_models():
     else:
         extra_model = {}
     return extra_model
+
+
+def parse_qs(value):
+    """Like urlparse.parse_qs but transform list values to single items"""
+    return drop_lists(battery_parse_qs(value))
+
+
+def drop_lists(value):
+    out = {}
+    for key, val in value.items():
+        val = val[0]
+        if isinstance(key, six.binary_type):
+            key = six.text_type(key, 'utf-8')
+        if isinstance(val, six.binary_type):
+            val = six.text_type(val, 'utf-8')
+        out[key] = val
+    return out
 
 
 if __name__ == '__main__':

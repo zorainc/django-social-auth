@@ -8,15 +8,7 @@ given by Fitbit application registration process.
 By default account id, username and token expiration time are stored in
 extra_data field, check OAuthBackend class for details on how to extend it.
 """
-try:
-    from urlparse import parse_qs
-    parse_qs  # placate pyflakes
-except ImportError:
-    # fall back for Python 2.5
-    from cgi import parse_qs
-
-from oauth2 import Token
-
+from social_auth.utils import parse_qs
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 
 
@@ -64,15 +56,9 @@ class FitbitAuth(ConsumerBasedOAuth):
         # Fitbit is a bit different - it passes user information along with
         # the access token, so temporarily store it to vie the user_data
         # method easy access later in the flow!
-        request = self.oauth_request(token, self.ACCESS_TOKEN_URL)
-        response = self.fetch_response(request)
-        token = Token.from_string(response)
-        params = parse_qs(response)
-
-        token.encoded_user_id = params.get('encoded_user_id', [None])[0]
-        token.fullname = params.get('fullname', [None])[0]
-        token.username = params.get('username', [None])[0]
-        return token
+        return parse_qs(self.oauth_request(
+            token, self.ACCESS_TOKEN_URL
+        ).content)
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""

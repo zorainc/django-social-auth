@@ -46,10 +46,9 @@ class TripItAuth(ConsumerBasedOAuth):
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
-        request = self.oauth_request(access_token, TRIPIT_CHECK_AUTH)
-        content = self.fetch_response(request)
+        response = self.oauth_request(access_token, TRIPIT_CHECK_AUTH)
         try:
-            dom = minidom.parseString(content)
+            dom = minidom.parseString(response.content)
         except ValueError:
             return None
 

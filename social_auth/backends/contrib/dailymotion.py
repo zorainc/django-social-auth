@@ -11,9 +11,7 @@ User screen name is used to generate username.
 By default account id is stored in extra_data field, check OAuthBackend
 class for details on how to extend it.
 """
-from urllib2 import HTTPError
-
-from django.utils import simplejson
+from requests import HTTPError
 
 from social_auth.utils import dsa_urlopen
 from social_auth.backends import BaseOAuth2
@@ -60,8 +58,7 @@ class DailymotionAuth(BaseOAuth2):
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
         try:
-            data = dsa_urlopen(DAILYMOTION_SERVER + access_token).read()
-            return simplejson.loads(data)
+            return dsa_urlopen(DAILYMOTION_SERVER + access_token).json()
         except (ValueError, HTTPError):
             return None
 

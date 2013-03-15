@@ -3,6 +3,8 @@ MongoEngine models for Social Auth
 
 Requires MongoEngine 0.6.10
 """
+import six
+
 try:
     from django.contrib.auth.hashers import UNUSABLE_PASSWORD
     _ = UNUSABLE_PASSWORD  # to quiet flake
@@ -31,7 +33,7 @@ class UserSocialAuth(Document, UserSocialAuthMixin):
 
     @classmethod
     def create_social_auth(cls, user, uid, provider):
-        if not isinstance(type(uid), basestring):
+        if not isinstance(type(uid), six.string_types):
             uid = str(uid)
         return cls.objects.create(user=user, uid=uid, provider=provider)
 

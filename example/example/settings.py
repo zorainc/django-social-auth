@@ -81,7 +81,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admin',
-    'south',
+    #'south',
     'social_auth',
     'app',
 )
@@ -175,6 +175,6 @@ SOCIAL_AUTH_PIPELINE = (
 )
 
 try:
-    from local_settings import *
+    from example.local_settings import *
 except:
     pass

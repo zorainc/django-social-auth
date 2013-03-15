@@ -11,12 +11,7 @@ Then update your settings values using registration information
 ref:
 https://github.com/gkmngrgn/django-tumblr-auth
 """
-from oauth2 import Request as OAuthRequest, Token as OAuthToken, \
-                   SignatureMethod_HMAC_SHA1
-
-from django.utils import simplejson
-
-from social_auth.utils import dsa_urlopen
+from social_auth.utils import parse_qs
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 
 
@@ -70,42 +65,16 @@ class TumblrAuth(ConsumerBasedOAuth):
     SETTINGS_SECRET_NAME = 'TUMBLR_CONSUMER_SECRET'
 
     def user_data(self, access_token):
-        request = self.oauth_request(access_token, TUMBLR_CHECK_AUTH)
-        json = self.fetch_response(request)
-
         try:
-            return simplejson.loads(json)
+            return self.oauth_request(access_token, TUMBLR_CHECK_AUTH).json()
         except ValueError:
             return None
 
     def unauthorized_token(self):
-        request = self.oauth_request(token=None, url=self.REQUEST_TOKEN_URL)
-        response = self.fetch_response(request)
-
-        return OAuthToken.from_string(response)
-
-    def oauth_request(self, token, url, extra_params=None):
-        params = {
-            'oauth_callback': self.redirect_uri,
-        }
-
-        if extra_params:
-            params.update(extra_params)
-
-        if 'oauth_verifier' in self.data:
-            params['oauth_verifier'] = self.data['oauth_verifier']
-
-        request = OAuthRequest.from_consumer_and_token(self.consumer,
-                                                       token=token,
-                                                       http_url=url,
-                                                       parameters=params)
-        request.sign_request(SignatureMethod_HMAC_SHA1(), self.consumer, token)
-        return request
-
-    def fetch_response(self, request):
-        """Executes request and fetchs service response"""
-        response = dsa_urlopen(request.to_url())
-        return response.read()
+        return parse_qs(self.oauth_request(
+            token=None,
+            url=self.REQUEST_TOKEN_URL
+        ).content)
 
 
 BACKENDS = {

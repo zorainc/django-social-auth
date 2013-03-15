@@ -19,9 +19,6 @@ Yahoo Profile scope with Read permission
 Throws:
 AuthUnknownError - if user data retrieval fails (guid or profile)
 """
-
-from django.utils import simplejson
-
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.exceptions import AuthUnknownError
 
@@ -74,10 +71,8 @@ class YahooOAuth(ConsumerBasedOAuth):
         guid = self._get_guid(access_token)
         url = 'http://social.yahooapis.com/v1/user/%s/profile?format=json' \
                     % guid
-        request = self.oauth_request(access_token, url)
-        response = self.fetch_response(request)
         try:
-            return simplejson.loads(response)['profile']
+            return self.oauth_request(access_token, url).json()['profile']
         except ValueError:
             raise AuthUnknownError('Error during profile retrieval, '
                                    'please, try again later')
@@ -87,12 +82,11 @@ class YahooOAuth(ConsumerBasedOAuth):
             Beause you have to provide GUID for every API request
             it's also returned during one of OAuth calls
         """
-        url = 'http://social.yahooapis.com/v1/me/guid?format=json'
-        request = self.oauth_request(access_token, url)
-        response = self.fetch_response(request)
         try:
-            json = simplejson.loads(response)
-            return json['guid']['value']
+            return self.oauth_request(
+                access_token,
+                'http://social.yahooapis.com/v1/me/guid?format=json'
+            ).json()['guid']['value']
         except ValueError:
             raise AuthUnknownError('Error during user id retrieval, '
                                    'please, try again later')

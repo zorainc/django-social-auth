@@ -1,9 +1,7 @@
 """Steam OpenId support"""
 import re
-import urllib
 
-from django.utils import simplejson
-
+from social_auth.p3 import urlencode
 from social_auth.backends import OpenIdAuth, OpenIDBackend
 from social_auth.exceptions import AuthFailed
 from social_auth.utils import setting, dsa_urlopen
@@ -23,11 +21,11 @@ class SteamBackend(OpenIDBackend):
 
     def get_user_details(self, response):
         user_id = self._user_id(response)
-        url = USER_INFO + urllib.urlencode({'key': setting('STEAM_API_KEY'),
-                                            'steamids': user_id})
+        url = USER_INFO + urlencode({'key': setting('STEAM_API_KEY'),
+                                     'steamids': user_id})
         details = {}
         try:
-            player = simplejson.load(dsa_urlopen(url))
+            player = dsa_urlopen(url).json()
         except (ValueError, IOError):
             pass
         else:

@@ -1,10 +1,7 @@
 """
 BrowserID support
 """
-from urllib import urlencode
-
 from django.contrib.auth import authenticate
-from django.utils import simplejson
 
 from social_auth.backends import SocialAuthBackend, BaseAuth
 from social_auth.utils import log, dsa_urlopen
@@ -55,14 +52,13 @@ class BrowserIDAuth(BaseAuth):
         if not 'assertion' in self.data:
             raise AuthMissingParameter(self, 'assertion')
 
-        data = urlencode({
+        data = {
             'assertion': self.data['assertion'],
             'audience': self.request.get_host()
-        })
+        }
 
         try:
-            response = simplejson.load(dsa_urlopen(BROWSER_ID_SERVER,
-                                                   data=data))
+            response = dsa_urlopen(BROWSER_ID_SERVER, data=data).json()
         except ValueError:
             log('error', 'Could not load user data from BrowserID.',
                 exc_info=True)

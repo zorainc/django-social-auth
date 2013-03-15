@@ -1,7 +1,5 @@
-from oauth2 import Consumer as OAuthConsumer, Token, Request as OAuthRequest, \
-                   SignatureMethod_HMAC_SHA1, HTTP_METHOD
-
-from django.utils import simplejson
+from requests_oauthlib import OAuth1
+from oauthlib.oauth1 import SIGNATURE_TYPE_AUTH_HEADER
 
 from social_auth.models import UserSocialAuth
 from social_auth.utils import dsa_urlopen
@@ -12,31 +10,23 @@ def consumer_oauth_url_request(backend, url, user_or_id, redirect_uri='/',
     """Builds and retrieves an OAuth signed response."""
     user = UserSocialAuth.resolve_user_or_id(user_or_id)
     oauth_info = user.social_auth.filter(provider=backend.AUTH_BACKEND.name)[0]
-    token = Token.from_string(oauth_info.tokens['access_token'])
-    request = build_consumer_oauth_request(backend, token, url, redirect_uri)
-    response = '\n'.join(dsa_urlopen(request.to_url()).readlines())
-
-    if json:
-        response = simplejson.loads(response)
-    return response
+    response = build_consumer_oauth_request(backend, oauth_info.tokens, url,
+                                            redirect_uri)
+    return response.json() if json else response.content
 
 
 def build_consumer_oauth_request(backend, token, url, redirect_uri='/',
                                  oauth_verifier=None, extra_params=None,
-                                 method=HTTP_METHOD):
+                                 data=None, method='GET',
+                                 signature_type=SIGNATURE_TYPE_AUTH_HEADER):
     """Builds a Consumer OAuth request."""
-    params = {'oauth_callback': redirect_uri}
-    if extra_params:
-        params.update(extra_params)
-
-    if oauth_verifier:
-        params['oauth_verifier'] = oauth_verifier
-
-    consumer = OAuthConsumer(*backend.get_key_and_secret())
-    request = OAuthRequest.from_consumer_and_token(consumer,
-                                                   token=token,
-                                                   http_method=method,
-                                                   http_url=url,
-                                                   parameters=params)
-    request.sign_request(SignatureMethod_HMAC_SHA1(), consumer, token)
-    return request
+    key, secret = backend.get_key_and_secret()
+    token = token or {}
+    oauth = OAuth1(key, secret,
+                   resource_owner_key=token.get('oauth_token'),
+                   resource_owner_secret=token.get('oauth_token_secret'),
+                   callback_uri=redirect_uri,
+                   verifier=oauth_verifier,
+                   signature_type=signature_type)
+    return dsa_urlopen(url, method=method, params=extra_params, data=data,
+                       auth=oauth)

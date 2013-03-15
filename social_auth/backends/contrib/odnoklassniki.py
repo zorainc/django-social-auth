@@ -16,14 +16,12 @@ elif you're building iframe application,
 Then setup your application according manual and use information from
 registration mail to set settings values.
 """
-from urllib import urlencode, unquote
-from urllib2 import Request
 from hashlib import md5
 
 from django import forms
 from django.contrib.auth import authenticate
-from django.utils import simplejson
 
+from social_auth.p3 import unquote
 from social_auth.backends import OAuthBackend, BaseOAuth2, BaseAuth, \
                                  SocialAuthBackend
 from social_auth.exceptions import AuthFailed
@@ -128,13 +126,11 @@ def odnoklassniki_api(data, api_url, public_key, client_secret,
     else:
         msg = 'Unknown request type {0}. How should it be signed?'
         raise AuthFailed(msg.format(request_type))
-    params = urlencode(data)
-    request = Request('{0}fb.do?{1}'.format(api_url, params))
     try:
-        return simplejson.loads(dsa_urlopen(request).read())
+        return dsa_urlopen('{0}fb.do'.format(api_url), params=data).json()
     except (TypeError, KeyError, IOError, ValueError, IndexError):
         log('error', 'Could not load data from Odnoklassniki.',
-            exc_info=True, extra=dict(data=params))
+            exc_info=True, extra=dict(data=data))
         return None
 
 

@@ -3,16 +3,9 @@ EverNote OAuth support
 
 No extra configurations are needed to make this work.
 """
-from urllib2 import HTTPError
-try:
-    from urlparse import parse_qs
-    parse_qs  # placate pyflakes
-except ImportError:
-    # fall back for Python 2.5
-    from cgi import parse_qs
+from requests import HTTPError
 
-from oauth2 import Token
-from social_auth.utils import setting
+from social_auth.utils import setting, parse_qs
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.exceptions import AuthCanceled
 
@@ -55,11 +48,12 @@ class EvernoteBackend(OAuthBackend):
 
     @classmethod
     def extra_data(cls, user, uid, response, details=None):
-        data = super(EvernoteBackend, cls).extra_data(user, uid, response, details)
+        data = super(EvernoteBackend, cls).extra_data(user, uid, response,
+                                                      details)
         # Evernote returns expiration timestamp in miliseconds, so it needs to
         # be normalized.
         if 'expires' in data:
-            data['expires'] = unicode(int(data['expires']) / 1000)
+            data['expires'] = int(data['expires']) / 1000
         return data
 
     def get_user_details(self, response):
@@ -84,33 +78,24 @@ class EvernoteAuth(ConsumerBasedOAuth):
 
     def access_token(self, token):
         """Return request for access token value"""
-        request = self.oauth_request(token, self.ACCESS_TOKEN_URL)
-
         try:
-            response = self.fetch_response(request)
-        except HTTPError, e:
+            response = self.oauth_request(token, self.ACCESS_TOKEN_URL)
+        except HTTPError as e:
             # Evernote returns a 401 error when AuthCanceled
-            if e.code == 401:
+            if e.response.status_code == 401:
                 raise AuthCanceled(self)
             else:
                 raise
-
-        params = parse_qs(response)
-
-        # evernote sents a empty secret token, this way it doesn't fires up the
-        # exception
-        response = response.replace('oauth_token_secret=',
-                                    'oauth_token_secret=None')
-        token = Token.from_string(response)
-
-        token.user_info = params
-        return token
+        params = parse_qs(response.content)
+        return {
+            'oauth_token': params['oauth_token'],
+            'oauth_token_secret': params['oauth_token_secret'],
+            'user_info': params
+        }
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
-        # drop lists
-        return dict([(key, val[0]) for key, val in
-            access_token.user_info.items()])
+        return access_token['user_info']
 
 
 # Backend definition

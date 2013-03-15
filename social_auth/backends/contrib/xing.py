@@ -4,12 +4,11 @@ XING OAuth support
 No extra configurations are needed to make this work.
 """
 import oauth2 as oauth
-from oauth2 import Token
-
-from urllib import urlencode
 
 from django.utils import simplejson
 
+from social_auth.p3 import urlencode
+from social_auth.utils import parse_qs
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.exceptions import AuthCanceled, AuthUnknownError
 
@@ -55,6 +54,7 @@ class XingAuth(ConsumerBasedOAuth):
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
+        # TODO: review this and drop oauth2 library
         key, secret = self.get_key_and_secret()
         consumer = oauth.Consumer(key=key, secret=secret)
         client = oauth.Client(consumer, access_token)
@@ -90,13 +90,12 @@ class XingAuth(ConsumerBasedOAuth):
         if scope:
             request_token_url = request_token_url + '?' + urlencode(scope)
 
-        request = self.oauth_request(
+        response = self.oauth_request(
             token=None,
             url=request_token_url,
             extra_params=self.request_token_extra_arguments()
         )
-        response = self.fetch_response(request)
-        return Token.from_string(response)
+        return parse_qs(response.content)
 
 
 # Backend definition

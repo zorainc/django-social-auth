@@ -6,9 +6,7 @@ No extra configurations are needed to make this work.
 from xml.etree import ElementTree
 from xml.parsers.expat import ExpatError
 
-from oauth2 import Token
-
-from social_auth.utils import setting
+from social_auth.utils import setting, parse_qs
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.exceptions import AuthCanceled, AuthUnknownError
 
@@ -62,10 +60,9 @@ class LinkedinAuth(ConsumerBasedOAuth):
         # use set() over fields_selectors since LinkedIn fails when values are
         # duplicated
         url = LINKEDIN_CHECK_AUTH + ':(%s)' % ','.join(set(fields_selectors))
-        request = self.oauth_request(access_token, url)
-        raw_xml = self.fetch_response(request)
+        response = self.oauth_request(access_token, url)
         try:
-            return to_dict(ElementTree.fromstring(raw_xml))
+            return to_dict(ElementTree.fromstring(response.content))
         except (ExpatError, KeyError, IndexError):
             return None
 
@@ -96,14 +93,13 @@ class LinkedinAuth(ConsumerBasedOAuth):
         if scope:
             qs = 'scope=' + self.SCOPE_SEPARATOR.join(scope)
             request_token_url = request_token_url + '?' + qs
-
-        request = self.oauth_request(
-            token=None,
-            url=request_token_url,
-            extra_params=self.request_token_extra_arguments()
+        return parse_qs(
+            self.oauth_request(
+                token=None,
+                url=request_token_url,
+                extra_params=self.request_token_extra_arguments()
+            ).content
         )
-        response = self.fetch_response(request)
-        return Token.from_string(response)
 
 
 def to_dict(xml):

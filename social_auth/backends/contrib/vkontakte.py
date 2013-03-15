@@ -6,17 +6,15 @@ This contribution adds support for VKontakte OpenAPI and OAuth 2.0 service in
 the form www.vkontakte.ru. Username is retrieved from the identity returned by
 server.
 """
-
-from django.contrib.auth import authenticate
-from django.utils import simplejson
-
-from urllib import urlencode
 from hashlib import md5
 from time import time
 
+from django.contrib.auth import authenticate
+
 from social_auth.backends import SocialAuthBackend, OAuthBackend, BaseAuth, \
                                  BaseOAuth2
-from social_auth.exceptions import AuthTokenRevoked, AuthException, AuthCanceled, AuthFailed
+from social_auth.exceptions import AuthTokenRevoked, AuthException, \
+                                   AuthCanceled, AuthFailed
 from social_auth.utils import setting, log, dsa_urlopen
 
 
@@ -46,7 +44,7 @@ class VKontakteBackend(SocialAuthBackend):
     def get_user_details(self, response):
         """Return user details from VKontakte request"""
         nickname = response.get('nickname') or response['id']
-        if isinstance(nickname, (list, tuple, )):
+        if isinstance(nickname, (list, tuple)):
             nickname = nickname[0]
         return {
             'username': nickname,
@@ -284,10 +282,8 @@ def vkontakte_api(method, data):
     else:
         url = VKONTAKTE_API_URL + method
 
-    params = urlencode(data)
-    url += '?' + params
     try:
-        return simplejson.load(dsa_urlopen(url))
+        return dsa_urlopen(url, params=data).json()
     except (TypeError, KeyError, IOError, ValueError, IndexError):
         log('error', 'Could not load data from VKontakte.',
             exc_info=True, extra=dict(data=data))

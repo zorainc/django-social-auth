@@ -52,10 +52,8 @@ class SkyrockAuth(ConsumerBasedOAuth):
 
     def user_data(self, access_token):
         """Return user data provided"""
-        request = self.oauth_request(access_token, SKYROCK_CHECK_AUTH)
-        json = self.fetch_response(request)
         try:
-            return simplejson.loads(json)
+            return self.oauth_request(access_token, SKYROCK_CHECK_AUTH).json()
         except ValueError:
             return None
 

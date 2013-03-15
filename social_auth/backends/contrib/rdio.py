@@ -1,11 +1,5 @@
-import urllib
-
-from oauth2 import Request as OAuthRequest, SignatureMethod_HMAC_SHA1
-
-from django.utils import simplejson
-
-from social_auth.backends import ConsumerBasedOAuth, OAuthBackend, BaseOAuth2
 from social_auth.utils import dsa_urlopen
+from social_auth.backends import ConsumerBasedOAuth, OAuthBackend, BaseOAuth2
 
 
 class RdioBaseBackend(OAuthBackend):
@@ -65,30 +59,16 @@ class RdioOAuth1(ConsumerBasedOAuth):
 
     def user_data(self, access_token, *args, **kwargs):
         """Return user data provided"""
-        params = {
-            'method': 'currentUser',
-            'extras': 'username,displayName,streamRegion',
-        }
-        request = self.oauth_post_request(access_token, self.RDIO_API_BASE,
-            params=params)
-        response = dsa_urlopen(request.url, request.to_postdata())
-        json = '\n'.join(response.readlines())
         try:
-            return simplejson.loads(json)['result']
+            return self.oauth_request(
+                access_token,
+                self.RDIO_API_BASE,
+                data={'method': 'currentUser',
+                      'extras': 'username,displayName,streamRegion'},
+                method='POST'
+            ).json()['result']
         except ValueError:
             return None
-
-    def oauth_post_request(self, token, url, params):
-        """Generate OAuth request, setups callback url"""
-        if 'oauth_verifier' in self.data:
-            params['oauth_verifier'] = self.data['oauth_verifier']
-        request = OAuthRequest.from_consumer_and_token(self.consumer,
-                                                       token=token,
-                                                       http_url=url,
-                                                       parameters=params,
-                                                       http_method='POST')
-        request.sign_request(SignatureMethod_HMAC_SHA1(), self.consumer, token)
-        return request
 
 
 class RdioOAuth2(BaseOAuth2):
@@ -102,14 +82,14 @@ class RdioOAuth2(BaseOAuth2):
     EXTRA_PARAMS_VAR_NAME = 'RDIO2_EXTRA_PARAMS'
 
     def user_data(self, access_token, *args, **kwargs):
-        params = {
-            'method': 'currentUser',
-            'extras': 'username,displayName,streamRegion',
-            'access_token': access_token,
-        }
-        response = dsa_urlopen(self.RDIO_API_BASE, urllib.urlencode(params))
         try:
-            return simplejson.load(response)['result']
+            return dsa_urlopen(
+                self.RDIO_API_BASE,
+                method='POST',
+                data={'method': 'currentUser',
+                      'extras': 'username,displayName,streamRegion',
+                      'access_token': access_token}
+            ).json()['result']
         except ValueError:
             return None
 

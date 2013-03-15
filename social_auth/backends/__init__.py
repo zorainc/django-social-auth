@@ -9,24 +9,23 @@ Also the modules *must* define a BACKENDS dictionary with the backend name
 (which is used for URLs matching) and Auth class, otherwise it won't be
 enabled.
 """
-from urllib2 import Request, HTTPError
-from urllib import urlencode
+import six
+
+from requests import HTTPError
 
 from openid.consumer.consumer import Consumer, SUCCESS, CANCEL, FAILURE
 from openid.consumer.discover import DiscoveryFailure
 from openid.extensions import sreg, ax, pape
 
-from oauth2 import Consumer as OAuthConsumer, Token, Request as OAuthRequest
-
 from django.contrib.auth import authenticate
-from django.utils import simplejson
 from django.utils.importlib import import_module
 
+from social_auth.p3 import urlencode
 from social_auth.models import UserSocialAuth
 from social_auth.utils import setting, model_to_ctype, ctype_to_model, \
                               clean_partial_pipeline, url_add_parameters, \
                               get_random_string, constant_time_compare, \
-                              dsa_urlopen
+                              dsa_urlopen, parse_qs
 from social_auth.store import DjangoOpenIDStore
 from social_auth.exceptions import StopPipeline, AuthException, AuthFailed, \
                                    AuthCanceled, AuthUnknownError, \
@@ -348,7 +347,7 @@ class BaseAuth(object):
             'backend': self.AUTH_BACKEND.name,
             'args': tuple(map(model_to_ctype, args)),
             'kwargs': dict((key, model_to_ctype(val))
-                                for key, val in kwargs.iteritems())
+                                for key, val in kwargs.items())
         }
 
     def from_session_dict(self, session_data, *args, **kwargs):
@@ -359,9 +358,9 @@ class BaseAuth(object):
 
         kwargs = kwargs.copy()
         saved_kwargs = dict((key, ctype_to_model(val))
-                            for key, val in session_data['kwargs'].iteritems())
+                            for key, val in session_data['kwargs'].items())
         saved_kwargs.update((key, val)
-                            for key, val in kwargs.iteritems())
+                            for key, val in kwargs.items())
         return (session_data['next'], args, saved_kwargs)
 
     def continue_pipeline(self, *args, **kwargs):
@@ -388,7 +387,7 @@ class BaseAuth(object):
         """
         backend_name = self.AUTH_BACKEND.name.upper().replace('-', '_')
         extra_arguments = setting(backend_name + '_AUTH_EXTRA_ARGUMENTS', {})
-        for key, value in extra_arguments.iteritems():
+        for key, value in extra_arguments.items():
             if key in self.data:
                 extra_arguments[key] = self.data[key]
             elif value:
@@ -498,7 +497,9 @@ class OpenIdAuth(BaseAuth):
                 fetch_request.add(ax.AttrInfo(attr, alias=alias,
                                               required=True))
         else:
-            fetch_request = sreg.SRegRequest(optional=dict(SREG_ATTR).keys())
+            fetch_request = sreg.SRegRequest(
+                optional=list(dict(SREG_ATTR).keys())
+            )
         openid_request.addExtension(fetch_request)
 
         # Add PAPE Extension for if configured
@@ -543,7 +544,7 @@ class OpenIdAuth(BaseAuth):
                 self._openid_request = self.consumer().begin(
                     url_add_parameters(self.openid_url(), extra_params)
                 )
-            except DiscoveryFailure, err:
+            except DiscoveryFailure as err:
                 raise AuthException(self, 'OpenID discovery error: %s' % err)
         return self._openid_request
 
@@ -621,9 +622,9 @@ class ConsumerBasedOAuth(BaseOAuth):
         name = self.AUTH_BACKEND.name + 'unauthorized_token_name'
         if not isinstance(self.request.session.get(name), list):
             self.request.session[name] = []
-        self.request.session[name].append(token.to_string())
+        self.request.session[name].append(urlencode(token))
         self.request.session.modified = True
-        return self.oauth_authorization_request(token).to_url()
+        return self.oauth_authorization_request(token)
 
     def auth_complete(self, *args, **kwargs):
         """Return user, might be logged in"""
@@ -634,8 +635,9 @@ class ConsumerBasedOAuth(BaseOAuth):
         if not unauthed_tokens:
             raise AuthTokenError(self, 'Missing unauthorized token')
         for unauthed_token in unauthed_tokens:
-            token = Token.from_string(unauthed_token)
-            if token.key == self.data.get('oauth_token', 'no-token'):
+            token = parse_qs(unauthed_token)
+            saved_token = self.data.get('oauth_token', 'no-token')
+            if token.get('oauth_token') == saved_token:
                 unauthed_tokens = list(set(unauthed_tokens) -
                                        set([unauthed_token]))
                 self.request.session[name] = unauthed_tokens
@@ -646,8 +648,8 @@ class ConsumerBasedOAuth(BaseOAuth):
 
         try:
             access_token = self.access_token(token)
-        except HTTPError, e:
-            if e.code == 400:
+        except HTTPError as e:
+            if e.response.status_code == 400:
                 raise AuthCanceled(self)
             else:
                 raise
@@ -655,12 +657,15 @@ class ConsumerBasedOAuth(BaseOAuth):
 
     def do_auth(self, access_token, *args, **kwargs):
         """Finish the auth process once the access_token was retrieved"""
-        if isinstance(access_token, basestring):
-            access_token = Token.from_string(access_token)
+        if isinstance(access_token, six.string_types):
+            access_token_string = access_token
+            access_token = parse_qs(access_token)
+        else:
+            access_token_string = urlencode(access_token)
 
         data = self.user_data(access_token)
         if data is not None:
-            data['access_token'] = access_token.to_string()
+            data['access_token'] = access_token_string
 
         kwargs.update({
             'auth': self,
@@ -671,45 +676,37 @@ class ConsumerBasedOAuth(BaseOAuth):
 
     def unauthorized_token(self):
         """Return request for unauthorized token (first stage)"""
-        request = self.oauth_request(
+        response = self.oauth_request(
             token=None,
             url=self.REQUEST_TOKEN_URL,
             extra_params=self.request_token_extra_arguments()
         )
-        return Token.from_string(self.fetch_response(request))
+        return parse_qs(response.content)
 
     def oauth_authorization_request(self, token):
         """Generate OAuth request to authorize token."""
+        if not isinstance(token, dict):
+            token = parse_qs(token)
         params = self.auth_extra_arguments() or {}
         params.update(self.get_scope_argument())
-        return OAuthRequest.from_token_and_callback(
-            token=token,
-            callback=self.redirect_uri,
-            http_url=self.AUTHORIZATION_URL,
-            parameters=params
-        )
+        params['oauth_token'] = token.get('oauth_token')
+        params['redirect_uri'] = self.redirect_uri
+        return self.AUTHORIZATION_URL + '?' + urlencode(params)
 
-    def oauth_request(self, token, url, extra_params=None):
+    def oauth_request(self, token, url, extra_params=None, data=None,
+                      method='GET'):
         """Generate OAuth request, setups callback url"""
         return build_consumer_oauth_request(self, token, url,
                                             self.redirect_uri,
                                             self.data.get('oauth_verifier'),
-                                            extra_params)
-
-    def fetch_response(self, request):
-        """Executes request and fetchs service response"""
-        response = dsa_urlopen(request.to_url())
-        return '\n'.join(response.readlines())
+                                            extra_params=extra_params,
+                                            data=data,
+                                            method=method)
 
     def access_token(self, token):
         """Return request for access token value"""
         request = self.oauth_request(token, self.ACCESS_TOKEN_URL)
-        return Token.from_string(self.fetch_response(request))
-
-    @property
-    def consumer(self):
-        """Setups consumer"""
-        return OAuthConsumer(*self.get_key_and_secret())
+        return parse_qs(request.content)
 
 
 class BaseOAuth2(BaseOAuth):
@@ -817,13 +814,13 @@ class BaseOAuth2(BaseOAuth):
         """Completes loging process, must return user instance"""
         self.process_error(self.data)
         params = self.auth_complete_params(self.validate_state())
-        request = Request(self.ACCESS_TOKEN_URL, data=urlencode(params),
-                          headers=self.auth_headers())
 
         try:
-            response = simplejson.loads(dsa_urlopen(request).read())
-        except HTTPError, e:
-            if e.code == 400:
+            response = dsa_urlopen(self.ACCESS_TOKEN_URL, data=params,
+                                   headers=self.auth_headers(),
+                                   method='POST').json()
+        except HTTPError as e:
+            if e.response.status_code == 400:
                 raise AuthCanceled(self)
             else:
                 raise
@@ -846,18 +843,14 @@ class BaseOAuth2(BaseOAuth):
 
     @classmethod
     def process_refresh_token_response(cls, response):
-        return simplejson.loads(response)
+        return response.json()
 
     @classmethod
     def refresh_token(cls, token):
-        request = Request(
-            cls.REFRESH_TOKEN_URL or cls.ACCESS_TOKEN_URL,
-            data=urlencode(cls.refresh_token_params(token)),
-            headers=cls.auth_headers()
-        )
-        return cls.process_refresh_token_response(
-            dsa_urlopen(request).read()
-        )
+        response = dsa_urlopen(cls.REFRESH_TOKEN_URL or cls.ACCESS_TOKEN_URL,
+                               cls.refresh_token_params(token),
+                               headers=cls.auth_headers())
+        return cls.process_refresh_token_response(response)
 
     def do_auth(self, access_token, *args, **kwargs):
         """Finish the auth process once the access_token was retrieved"""

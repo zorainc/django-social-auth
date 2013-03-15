@@ -1,9 +1,5 @@
-from urllib import urlencode
-
-from django.utils import simplejson
-
-from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.utils import dsa_urlopen
+from social_auth.backends import BaseOAuth2, OAuthBackend
 
 
 INSTAGRAM_SERVER = 'instagram.com'
@@ -40,10 +36,10 @@ class InstagramAuth(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
-        params = {'access_token': access_token}
-        url = INSTAGRAM_CHECK_AUTH + '?' + urlencode(params)
         try:
-            return simplejson.load(dsa_urlopen(url))
+            return dsa_urlopen(INSTAGRAM_CHECK_AUTH, params={
+                'access_token': access_token
+            }).json()
         except ValueError:
             return None
 

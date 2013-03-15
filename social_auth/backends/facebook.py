@@ -11,24 +11,22 @@ setting, it must be a list of values to request.
 By default account id and token expiration time are stored in extra_data
 field, check OAuthBackend class for details on how to extend it.
 """
-import cgi
 import base64
 import hmac
 import hashlib
 import time
-from urllib import urlencode
-from urllib2 import HTTPError
+from requests import HTTPError
 
 from django.utils import simplejson
 from django.contrib.auth import authenticate
 from django.http import HttpResponse
 from django.template import TemplateDoesNotExist, RequestContext, loader
 
-from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.utils import sanitize_log_data, backend_setting, setting,\
-    log, dsa_urlopen
+                              log, dsa_urlopen, parse_qs
 from social_auth.exceptions import AuthException, AuthCanceled, AuthFailed,\
-    AuthTokenError, AuthUnknownError
+                                   AuthTokenError, AuthUnknownError
+from social_auth.backends import BaseOAuth2, OAuthBackend
 
 
 # Facebook configuration
@@ -84,10 +82,8 @@ class FacebookAuth(BaseOAuth2):
         data = None
         params = backend_setting(self, self.EXTRA_PARAMS_VAR_NAME, {})
         params['access_token'] = access_token
-        url = FACEBOOK_ME + urlencode(params)
-
         try:
-            data = simplejson.load(dsa_urlopen(url))
+            data = dsa_urlopen(FACEBOOK_ME, params=params).json()
         except ValueError:
             extra = {'access_token': sanitize_log_data(access_token)}
             log('error', 'Could not load user data from Facebook.',
@@ -109,17 +105,16 @@ class FacebookAuth(BaseOAuth2):
 
         if 'code' in self.data:
             state = self.validate_state()
-            url = ACCESS_TOKEN + urlencode({
-                'client_id': backend_setting(self, self.SETTINGS_KEY_NAME),
-                'redirect_uri': self.get_redirect_uri(state),
-                'client_secret': backend_setting(
-                    self,
-                    self.SETTINGS_SECRET_NAME
-                ),
-                'code': self.data['code']
-            })
             try:
-                response = cgi.parse_qs(dsa_urlopen(url).read())
+                response = parse_qs(dsa_urlopen(ACCESS_TOKEN, params={
+                    'client_id': backend_setting(self, self.SETTINGS_KEY_NAME),
+                    'redirect_uri': self.get_redirect_uri(state),
+                    'client_secret': backend_setting(
+                        self,
+                        self.SETTINGS_SECRET_NAME
+                    ),
+                    'code': self.data['code']
+                }).content)
             except HTTPError:
                 raise AuthFailed(self, 'There was an error authenticating '
                                        'the app')
@@ -152,8 +147,7 @@ class FacebookAuth(BaseOAuth2):
 
     @classmethod
     def process_refresh_token_response(cls, response):
-        return dict((key, val[0])
-                        for key, val in cgi.parse_qs(response).iteritems())
+        return response
 
     @classmethod
     def refresh_token_params(cls, token):
@@ -195,7 +189,7 @@ class FacebookAuth(BaseOAuth2):
 
 
 def base64_url_decode(data):
-    data = data.encode(u'ascii')
+    data = data.encode('ascii')
     data += '=' * (4 - (len(data) % 4))
     return base64.urlsafe_b64decode(data)
 
@@ -206,7 +200,7 @@ def base64_url_encode(data):
 
 def load_signed_request(signed_request, api_secret=None):
     try:
-        sig, payload = signed_request.split(u'.', 1)
+        sig, payload = signed_request.split('.', 1)
         sig = base64_url_decode(sig)
         data = simplejson.loads(base64_url_decode(payload))
 
@@ -216,7 +210,7 @@ def load_signed_request(signed_request, api_secret=None):
 
         # allow the signed_request to function for upto 1 day
         if sig == expected_sig and \
-           data[u'issued_at'] > (time.time() - 86400):
+           data['issued_at'] > (time.time() - 86400):
             return data
     except ValueError:
         pass  # ignore if can't split on dot

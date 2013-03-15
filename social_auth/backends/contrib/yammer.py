@@ -2,15 +2,12 @@
 Yammer OAuth2 support
 """
 import logging
-from urllib import urlencode
-from urlparse import parse_qs
 
-from django.utils import simplejson
 from django.utils.datastructures import MergeDict
 
 from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.exceptions import AuthCanceled
-from social_auth.utils import dsa_urlopen, setting
+from social_auth.utils import dsa_urlopen, parse_qs, setting
 
 
 YAMMER_SERVER = 'yammer.com'
@@ -58,17 +55,13 @@ class YammerOAuth2(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Load user data from yammer"""
-        params = {
-            'client_id': setting(self.SETTINGS_KEY_NAME, ''),
-            'client_secret': setting(self.SETTINGS_SECRET_NAME, ''),
-            'code': access_token
-        }
-
-        url = '%s?%s' % (self.ACCESS_TOKEN_URL, urlencode(params))
-
         try:
-            return simplejson.load(dsa_urlopen(url))
-        except Exception, e:
+            return dsa_urlopen(self.ACCESS_TOKEN_URL, params={
+                'client_id': setting(self.SETTINGS_KEY_NAME, ''),
+                'client_secret': setting(self.SETTINGS_SECRET_NAME, ''),
+                'code': access_token
+            }).json()
+        except Exception as e:
             logging.exception(e)
         return None
 

@@ -1,7 +1,5 @@
-from django.utils import simplejson
-from social_auth.backends import BaseOAuth2, OAuthBackend
 from social_auth.utils import dsa_urlopen, backend_setting
-from urllib import urlencode
+from social_auth.backends import BaseOAuth2, OAuthBackend
 
 
 DISQUS_SERVER = 'disqus.com'
@@ -56,13 +54,11 @@ class DisqusAuth(BaseOAuth2):
 
     def user_data(self, access_token, *args, **kwargs):
         """Loads user data from service"""
-        params = {
-            'access_token': access_token,
-            'api_secret': backend_setting(self, self.SETTINGS_SECRET_NAME),
-        }
-        url = DISQUS_CHECK_AUTH + '?' + urlencode(params)
         try:
-            return simplejson.load(dsa_urlopen(url))
+            return dsa_urlopen(DISQUS_CHECK_AUTH, params={
+                'access_token': access_token,
+                'api_secret': backend_setting(self, self.SETTINGS_SECRET_NAME),
+            }).json()
         except ValueError:
             return None
 

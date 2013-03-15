@@ -4,10 +4,8 @@ Readability OAuth support.
 This contribution adds support for Readability OAuth service. The settings
 READABILITY_CONSUMER_KEY and READABILITY_CONSUMER_SECRET must be defined with
 the values given by Readability in the Connections page of your account
-settings."""
-
-from django.utils import simplejson
-
+settings.
+"""
 from social_auth.backends import ConsumerBasedOAuth, OAuthBackend
 from social_auth.exceptions import AuthCanceled
 from social_auth.utils import setting
@@ -73,11 +71,11 @@ class ReadabilityAuth(ConsumerBasedOAuth):
     SETTINGS_SECRET_NAME = 'READABILITY_CONSUMER_SECRET'
 
     def user_data(self, access_token, *args, **kwargs):
-        url = READABILITY_USER_DATA_URL
-        request = self.oauth_request(access_token, url)
-        json = self.fetch_response(request)
         try:
-            return simplejson.loads(json)
+            return self.oauth_request(
+                access_token,
+                READABILITY_USER_DATA_URL
+            ).json()
         except ValueError:
             return None
 
