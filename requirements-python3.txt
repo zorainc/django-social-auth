@@ -1,4 +1,4 @@
-django>=1.2.5
+django>=1.5
 python3-openid>=3.0.1
 oauthlib>=0.3.8
 requests>=1.1.0
