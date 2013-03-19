@@ -47,7 +47,8 @@ setup(name='django-social-auth',
                 'social_auth.db'],
       package_data={'social_auth': ['locale/*/LC_MESSAGES/*']},
       long_description=long_description(),
-      install_requires=['django>=1.2.5',
+      install_requires=[PY3 and 'django>=1.5' or
+                                'django>=1.2.5',
                         PY3 and 'python3-openid>=3.0.1' or
                                 'python_openid>=2.2',
                         'oauthlib>=0.3.8',
